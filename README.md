@@ -2,7 +2,7 @@
 ## 1. Thành viên nhóm 3:
 + Trần Khải Hoàn - 21110827
 + Phạm Ngọc Đăng Khoa - 21110214
-## 2. Đề tài: Ứng dụng bán thiết bị di động
+## 2. Đề tài: Ứng dụng kinh doanh thiết bị di động
 ## 3. Đặc tả use case:
 - Use case 1: Đăng nhập
 + Actor: User.
@@ -12,10 +12,10 @@
   2. Hệ thống kiểm tra thông tin đăng nhập của User.
   3. Hệ thống chuyển User qua trang chủ.
 + Alternate Flow:
-  1. User có thể nhấn vào chữ "Quên mật khẩu".
-  2. Hệ thống chuyển User qua trang Quên mật khẩu.
-  1. User có thể nhấn vào chữ "Chưa có tài khoản? Đăng ký".
-  2. Hệ thống chuyển User qua trang Đăng ký.
+  * User có thể nhấn vào chữ "Quên mật khẩu".
+  * Hệ thống chuyển User qua trang Quên mật khẩu.
+  * User có thể nhấn vào chữ "Chưa có tài khoản? Đăng ký".
+  * Hệ thống chuyển User qua trang Đăng ký.
 + Exception Flow:
   2. Thông tin nhập không hợp lệ.
   3. Hệ thống hiện thông báo Đăng nhập thất bại và yêu cầu User nhập lại.
@@ -80,14 +80,23 @@
 <img src="./Images/DN.jpg" height="500"/>
 - Trang quên mật khẩu:
 <img src="./Images/QUENMK.jpg" height="500"/>
+- Màn hình loading:
+<img src="./Images/Load.jpg" height="500"/>
 - Trang chủ:
 <img src="./Images/HomeUser.jpg" height="500"/>
 - Trang cập nhật thông tin cá nhân:
-
+<img src="./Images/CapNhatThongTinUser.jpg" height="500"/>
 - Trang xem chi tiết sản phẩm:
-
+<img src="./Images/ChiTietSPUser.jpg" height="500"/>
 - Trang lọc:
-
+<img src="./Images/LocSP.jpg" height="500"/>
 - Trang chủ Admin:
-
-- 
+<img src="./Images/HomeAdmin.jpg" height="500"/>
+- Trang quản lý sản phẩm:
+<img src="./Images/QuanLySPAdmin.jpg" height="500"/>
+- Trang xem chi tiết sản phẩm Admin:
+<img src="./Images/ChiTietSPAdmin.jpg" height="500"/>
+- Trang thêm sản phẩm Admin:
+<img src="./Images/ThemSPAdmin.jpg" height="500"/>
+- Trang chỉnh sửa sản phẩm Admin:
+<img src="./Images/ChinhSuaSPAdmin.jpg" height="500"/>
