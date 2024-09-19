@@ -12,13 +12,13 @@
   2. Hệ thống kiểm tra thông tin đăng nhập của User.
   3. Hệ thống chuyển User qua trang chủ.
 + Alternate Flow:
-  1.1. User có thể nhấn vào chữ "Quên mật khẩu".
-  2.1. Hệ thống chuyển User qua trang Quên mật khẩu.
-  1.2. User có thể nhấn vào chữ "Chưa có tài khoản? Đăng ký".
-  2.2. Hệ thống chuyển User qua trang Đăng ký.
+  1. User có thể nhấn vào chữ "Quên mật khẩu".
+  2. Hệ thống chuyển User qua trang Quên mật khẩu.
+  1. User có thể nhấn vào chữ "Chưa có tài khoản? Đăng ký".
+  2. Hệ thống chuyển User qua trang Đăng ký.
 + Exception Flow:
-  2.1. Thông tin nhập không hợp lệ.
-  3.2. Hệ thống hiện thông báo Đăng nhập thất bại và yêu cầu User nhập lại.
+  2. Thông tin nhập không hợp lệ.
+  3. Hệ thống hiện thông báo Đăng nhập thất bại và yêu cầu User nhập lại.
 - Use case 2: Đăng ký:
 + Actor: User.
 + Post Condition: User đăng ký tài khoản thành công.
@@ -29,8 +29,6 @@
   4. Tại trang nhập OTP, User nhập mã OTP và nhấn nút "Xác nhận".
   5. Hệ thống kiểm tra mã OTP đã nhập.
   6. Hệ thống thông báo "Đăng ký thành công", chuyển User qua trang Đăng nhập và lưu thông tin tài khoản vào cơ sở dữ liệu.
-+ Alternate Flow: N/A
-+ Exception Flow: N/A
 - Use case 3: Quên mật khẩu
 + Actor: User.
 + Post Condition: User đổi mật khẩu thành công.
@@ -45,8 +43,6 @@
   8. Tại trang Đổi mật khẩu, User nhập mật khẩu mới và nhấn "Save".
   9. Hệ thống kiểm tra mật khẩu đã nhập.
   10. Hệ thống thông báo đổi mật khẩu thành công và lưu thông tin tài khoản vào cơ sở dữ liệu.
-+ Alternate Flow: N/A
-+ Exception Flow: N/A
 - Use case 4: Cập nhật thông tin
 + Actor: User.
 + Post Condition: User cập nhật thông tin cá nhân thành công.
@@ -81,11 +77,11 @@
 - Trang đăng ký:
 <img src="./Images/DK.jpg" height="500"/>
 - Trang đăng nhập:
-
+<img src="./Images/DN.jpg" height="500"/>
 - Trang quên mật khẩu:
-
+<img src="./Images/QUENMK.jpg" height="500"/>
 - Trang chủ:
-
+<img src="./Images/HomeUser.jpg" height="500"/>
 - Trang cập nhật thông tin cá nhân:
 
 - Trang xem chi tiết sản phẩm:
