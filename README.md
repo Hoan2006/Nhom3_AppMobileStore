@@ -79,7 +79,7 @@
    4. Hệ thống hiển thị những sản phẩm theo bộ lọc.
 ## 4. Hình các giao diện:
 - Trang đăng ký:
-<img src="./Images/DK.jpg" height="1000"/>
+<img src="./Images/DK.jpg" height="500"/>
 - Trang đăng nhập:
 
 - Trang quên mật khẩu:
