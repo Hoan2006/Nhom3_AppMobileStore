@@ -17,8 +17,8 @@
   * User có thể nhấn vào chữ "Chưa có tài khoản? Đăng ký".
   * Hệ thống chuyển User qua trang Đăng ký.
 + Exception Flow:
-  2. Thông tin nhập không hợp lệ.
-  3. Hệ thống hiện thông báo Đăng nhập thất bại và yêu cầu User nhập lại.
+  * Thông tin nhập không hợp lệ.
+  * Hệ thống hiện thông báo Đăng nhập thất bại và yêu cầu User nhập lại.
 - Use case 2: Đăng ký:
 + Actor: User.
 + Post Condition: User đăng ký tài khoản thành công.
