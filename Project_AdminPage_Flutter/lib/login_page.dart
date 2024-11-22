@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'admin_page.dart';
-import 'register_page.dart';
-import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -13,6 +12,7 @@ class _LoginPageState extends State<LoginPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final DatabaseReference _database = FirebaseDatabase.instance.ref("users");
 
   Future<void> _login() async {
     String email = _emailController.text.trim();
@@ -33,14 +33,35 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     try {
-      await _auth.signInWithEmailAndPassword(
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => AdminPage()),
-      );
+
+      // Lấy thông tin user ID từ Firebase Auth
+      String userId = userCredential.user?.uid ?? '';
+
+      // Truy vấn role từ Realtime Database
+      DataSnapshot snapshot = await _database.child(userId).get();
+      if (snapshot.exists) {
+        Map userData = snapshot.value as Map;
+        String role = userData["role"] ?? '';
+
+        if (role == 'Admin') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => AdminPage()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Tài khoản của bạn không phải là tài khoản Admin!')),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không tìm thấy thông tin người dùng!')),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Email hoặc mật khẩu không hợp lệ!')),
@@ -95,21 +116,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 child: Text('Login', style: TextStyle(fontSize: 18)),
-              ),
-              SizedBox(height: 10),
-              TextButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => RegisterPage()),
-                ),
-                child: Text('Don\'t have an account? Register'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ForgotPasswordPage()),
-                ),
-                child: Text('Forgot Password?'),
               ),
             ],
           ),
