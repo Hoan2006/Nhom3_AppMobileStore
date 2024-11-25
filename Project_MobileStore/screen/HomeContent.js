@@ -1,19 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, Image, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Image, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import FilterMenu from './FilterMenu'; // Import FilterMenu
 import { getProducts } from '../firebase'; // Import hàm lấy sản phẩm từ firebase.js
+import { auth } from '../firebase'; // Import firebase auth để lấy userId
+import tw from 'tailwind-react-native-classnames';
 
 const HomeContent = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categories, setCategories] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState('');
   const [brands, setBrands] = useState([]);
-  const [sortOrder, setSortOrder] = useState(''); // Initialize sortOrder
+  const [sortOrder, setSortOrder] = useState('');
   const [showMenu, setShowMenu] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null); // State để lưu userId
+
+  useEffect(() => {
+    // Lấy userId từ Firebase
+    const user = auth.currentUser;
+    if (user) {
+      setCurrentUserId(user.uid); // Lưu userId vào state
+    }
+  }, []);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -21,6 +33,11 @@ const HomeContent = ({ navigation }) => {
         const productList = await getProducts();
         setProducts(productList);
         setFilteredProducts(productList);
+
+        const sortedProducts = productList
+          .sort((a, b) => b.sales - a.sales)
+          .slice(0, 10);
+        setTopProducts(sortedProducts);
 
         const uniqueCategories = [...new Set(productList.map(product => product.category))];
         setCategories(uniqueCategories);
@@ -73,25 +90,53 @@ const HomeContent = ({ navigation }) => {
   };
 
   const handleViewDetails = (product) => {
-    navigation.navigate('ProductDetailsScreen', { product });
+    navigation.navigate('ProductDetails', {
+      product,
+      userId: currentUserId, // Gửi userId đến ProductDetailsScreen
+    });
   };
 
+  const renderTopProducts = () => (
+    <View style={tw`bg-yellow-300 p-2 shadow-lg mb-4`}>
+      <Text style={tw`text-lg font-bold text-center mb-2 text-black`}>🔥 Top 10 sản phẩm bán chạy nhất</Text>
+      <FlatList
+        data={topProducts}
+        keyExtractor={(item) => item.id}
+        horizontal={true}
+        showsHorizontalScrollIndicator={false}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={tw`bg-white shadow-lg p-2 mr-2 items-center w-32`}
+            onPress={() => handleViewDetails(item)}
+          >
+            <Image source={{ uri: item.image }} style={tw`w-20 h-20 mb-1`} />
+            <Text style={tw`text-sm font-semibold text-gray-800 text-center`}>{item.name}</Text>
+            <View style={tw`flex-row items-center justify-center mt-1`}>
+              <Icon name="trending-up" size={18} color="#ff4500" />
+              <Text style={tw`ml-1 text-lg font-bold text-red-500 text-center`}>Đã bán: {item.sales}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      />
+    </View>
+  );
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={tw`flex-1 p-5 bg-gray-100`}>
+      <View style={tw`flex-row items-center mb-5`}>
         <TouchableOpacity
-          style={styles.menuButton}
+          style={tw`mr-4`}
           onPress={() => setShowMenu(!showMenu)}
         >
           <Icon name="menu" size={24} color="#333" />
         </TouchableOpacity>
         <TextInput
-          style={styles.searchInput}
+          style={tw`flex-1 h-10 border border-gray-300 rounded-full px-4 bg-gray-200 shadow-md`}
           placeholder="Tìm kiếm..."
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-        <TouchableOpacity style={styles.searchIcon}>
+        <TouchableOpacity style={tw`ml-2`}>
           <Icon name="search" size={24} color="#333" />
         </TouchableOpacity>
       </View>
@@ -112,16 +157,23 @@ const HomeContent = ({ navigation }) => {
 
       <FlatList
         data={filteredProducts}
+        numColumns={2}
         keyExtractor={(item) => item.id}
+        columnWrapperStyle={tw`justify-between`}
+        ListHeaderComponent={renderTopProducts}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={styles.productCard}
+            style={tw`bg-white mb-4 border border-gray-300 rounded-lg p-2 shadow-lg w-1/2`}
             onPress={() => handleViewDetails(item)}
           >
-            <Image source={{ uri: item.image }} style={styles.productImage} />
-            <View style={styles.productInfo}>
-              <Text style={styles.productName}>{item.name}</Text>
-              <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
+            <Image 
+              source={{ uri: item.image }} 
+              style={tw`w-32 h-32 rounded-md mx-auto mt-2`} 
+              resizeMode="contain"
+            />
+            <View style={tw`mt-2 px-2`}>
+              <Text style={tw`text-lg font-bold text-gray-800 text-center mb-1`}>{item.name}</Text>
+              <Text style={tw`text-lg text-yellow-600 font-semibold text-center`}>{formatPrice(item.price)}</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -129,78 +181,5 @@ const HomeContent = ({ navigation }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#f0f4f7', // Light gradient background
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  menuButton: {
-    marginRight: 15,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    backgroundColor: '#f8f8f8',
-    elevation: 2, // Elevation for shadow
-  },
-  searchIcon: {
-    marginLeft: 10,
-  },
-  productCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    padding: 10,
-    overflow: 'hidden',
-    elevation: 5, // Stronger shadow for better contrast
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    transform: [{ scale: 0.97 }], // Slight scaling effect
-    transition: 'all 0.3s ease', // Smooth animation
-  },
-  productImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 15,
-    margin: 10, // Add space around the image
-  },
-  productInfo: {
-    marginLeft: 15,
-    justifyContent: 'center',
-    flex: 1,
-  },
-  productName: {
-    fontSize: 20, // Tăng kích thước chữ
-    fontWeight: 'bold',
-    marginBottom: 8, // Tăng khoảng cách phía dưới
-    color: '#2C3E50', // Màu tối hơn để tương phản tốt hơn
-    textShadowColor: 'rgba(0, 0, 0, 0.2)', // Tạo bóng nhẹ cho chữ
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-    letterSpacing: 0.5, // Tạo khoảng cách giữa các chữ cái để dễ đọc hơn
-  },
-
-  productPrice: {
-    fontSize: 20,
-    color: '#e63946', // Bright red for price
-    fontWeight: '600',
-  },
-});
 
 export default HomeContent;

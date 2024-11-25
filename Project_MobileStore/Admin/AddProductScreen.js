@@ -1,4 +1,3 @@
-// src/screens/AddProductScreen.js
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert, ScrollView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -6,6 +5,7 @@ import { Picker } from '@react-native-picker/picker';
 import { addProduct } from '../firebase';
 import * as ImageManipulator from 'expo-image-manipulator';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const AddProductScreen = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -23,14 +23,24 @@ const AddProductScreen = ({ navigation }) => {
     });
 
     if (!result.canceled) {
-      // Thay đổi kích thước ảnh tại đây
       const manipResult = await ImageManipulator.manipulateAsync(
         result.assets[0].uri,
-        [{ resize: { width: 600 } }], // Đặt kích thước ảnh mong muốn tại đây
-        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG } // Tùy chỉnh chất lượng ảnh
+        [{ resize: { width: 600 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
-      setImage(manipResult.uri); // Cập nhật URI ảnh đã được thay đổi kích thước
+      setImage(manipResult.uri);
     }
+  };
+
+  const uploadImage = async (imageUri) => {
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+    const storage = getStorage();
+    const productImageRef = storageRef(storage, `products/${Date.now()}.jpg`);
+
+    await uploadBytes(productImageRef, blob);
+    const downloadURL = await getDownloadURL(productImageRef);
+    return downloadURL;
   };
 
   const handleAddProduct = async () => {
@@ -39,20 +49,21 @@ const AddProductScreen = ({ navigation }) => {
       return;
     }
 
-    const productId = Date.now().toString(); // Tạo ID sản phẩm tạm thời
-    const productData = {
-      name,
-      brand,
-      category,
-      description,
-      price: parseFloat(price),
-      image
-    };
-
     try {
-      await addProduct(productId, productData); // Thêm sản phẩm vào database
+      const imageUrl = await uploadImage(image);
+      const productId = Date.now().toString();
+      const productData = {
+        name,
+        brand,
+        category,
+        description,
+        price: parseFloat(price),
+        image: imageUrl
+      };
+
+      await addProduct(productId, productData);
       Alert.alert('Thông báo', 'Sản phẩm đã được thêm thành công!');
-      navigation.goBack(); // Quay lại trang trước đó
+      navigation.goBack();
     } catch (error) {
       console.error('Lỗi thêm sản phẩm:', error);
       Alert.alert('Thông báo', 'Có lỗi xảy ra khi thêm sản phẩm.');

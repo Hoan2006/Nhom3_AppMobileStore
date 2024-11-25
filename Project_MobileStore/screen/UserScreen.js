@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Modal, Image, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, Modal, Image, ScrollView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { auth, signOut, updateUserData, getUserData } from '../firebase';
+import { auth, signOut, updateUserData, getUserData, database} from '../firebase';
 import { sendOTPEmail, generateOTP } from '../otpService';
+import tw from 'tailwind-react-native-classnames';
+import { ref, onValue } from 'firebase/database';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const UserScreen = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -12,6 +15,10 @@ const UserScreen = ({ navigation }) => {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [avatar, setAvatar] = useState(null);
+  const [points, setPoints] = useState(0);
+  const [favorites, setFavorites] = useState([]); // Khai báo state cho favorites
+  const [cart, setCart] = useState([]); // Khai báo state cho cart
+  const [orders, setOrders] = useState([]); // Khai báo state cho orders
   const [isEditModalVisible, setEditModalVisible] = useState(false);
   const [otp, setOtp] = useState('');
   const [generatedOtp, setGeneratedOtp] = useState('');
@@ -30,19 +37,51 @@ const UserScreen = ({ navigation }) => {
           phone: userData.phone || '',
           address: userData.address || '',
           avatar: userData.avatar || null,
+          //points: userData.points || 0,
+          favorites: userData.favorites || [], // Lấy giá trị favorites từ userData
+          cart: userData.cart || [], // Lấy giá trị cart từ userData
+          orders: userData.orders || [], // Lấy giá trị orders từ userData
         });
         setName(userData.name || '');
         setDob(userData.dob || '');
         setPhone(userData.phone || '');
         setAddress(userData.address || '');
         setAvatar(userData.avatar || null);
+        //setPoints(userData.points || 0);
+        setFavorites(userData.favorites || []); // Cập nhật state favorites
+        setCart(userData.cart || []); // Cập nhật state cart
+        setOrders(userData.orders || []); // Cập nhật state orders
       } catch (error) {
         Alert.alert('Lỗi', 'Không thể tải thông tin người dùng.');
       }
     };
 
     loadUserData();
+
+     // Theo dõi và cập nhật điểm số theo thời gian thực
+     const userId = auth.currentUser?.uid;
+     if (userId) {
+       const pointsRef = ref(database, `users/${userId}/points`);
+       const unsubscribe = onValue(pointsRef, (snapshot) => {
+         const updatedPoints = snapshot.val();
+         setPoints(updatedPoints || 0); // Cập nhật điểm số nếu thay đổi
+       });
+ 
+       // Cleanup listener khi component bị unmount
+       return () => unsubscribe();
+     }
   }, []);
+
+  const validateName = (text) => {
+    const nameRegex = /^[A-Za-zÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂƠƯăâêôơư ả ẳ ã ạ ẩ ậ ẻ ề ệ ể ệ ỉ ị ỏ ỏ ố ồ ộ ỗ ổ ớ ờ ợ ụ ủ ũ ư ứ ừ ự ử]+$/;
+    return nameRegex.test(text);
+};
+
+
+  const validateDob = (date) => {
+    const dateRegex = /^(0?[1-9]|[12][0-9]|3[01])\/(0?[1-9]|1[012])\/\d{4}$/;
+    return dateRegex.test(date);
+  };
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -69,10 +108,20 @@ const UserScreen = ({ navigation }) => {
   };
 
   const handleUpdateInfo = () => {
+    if (!validateName(name)) {
+      Alert.alert('Lỗi', 'Tên không hợp lệ. Vui lòng chỉ nhập ký tự chữ và khoảng trắng.');
+      return;
+    }
+
+    if (!validateDob(dob)) {
+      Alert.alert('Lỗi', 'Ngày sinh không đúng định dạng (DD/MM/YYYY).');
+      return;
+    }
+
     const userId = auth.currentUser?.uid;
     if (!userId) return;
 
-    getUserData(userId).then(userData => {
+    getUserData(userId).then((userData) => {
       const changes = {
         name: name !== userData.name,
         dob: dob !== userData.dob,
@@ -81,34 +130,36 @@ const UserScreen = ({ navigation }) => {
         avatar: avatar !== userData.avatar,
       };
 
-      if (Object.values(changes).some(change => change)) {
-        Alert.alert(
-          'Xác nhận',
-          'Bạn có chắc muốn lưu các thay đổi?',
-          [
-            {
-              text: 'Hủy',
-              style: 'cancel',
-              onPress: () => {
-                // Khôi phục dữ liệu cũ khi hủy bỏ
-                setName(oldData.name);
-                setDob(oldData.dob);
-                setPhone(oldData.phone);
-                setAddress(oldData.address);
-                setAvatar(oldData.avatar);
-                setEditModalVisible(false);
-              },
-            },
-            {
-              text: 'Lưu',
-              onPress: () => {
-                handleSendOtp();
-                setEditModalVisible(true);
-              },
-            },
-          ]
-        );
+      if (!Object.values(changes).some((change) => change)) {
+        Alert.alert('Thông báo', 'Không có thay đổi nào để cập nhật.');
+        return;
       }
+
+      Alert.alert(
+        'Xác nhận',
+        'Bạn có chắc muốn lưu các thay đổi?',
+        [
+          {
+            text: 'Hủy',
+            style: 'cancel',
+            onPress: () => {
+              setName(oldData.name);
+              setDob(oldData.dob);
+              setPhone(oldData.phone);
+              setAddress(oldData.address);
+              setAvatar(oldData.avatar);
+              setEditModalVisible(false);
+            },
+          },
+          {
+            text: 'Lưu',
+            onPress: () => {
+              handleSendOtp();
+              setEditModalVisible(true);
+            },
+          },
+        ]
+      );
     });
   };
 
@@ -122,7 +173,7 @@ const UserScreen = ({ navigation }) => {
     try {
       if (!userId) throw new Error('Người dùng chưa đăng nhập');
 
-      await updateUserData(userId, { name, dob, phone, address, avatar });
+      await updateUserData(userId, { name, dob, phone, address, avatar, points, favorites, cart, orders });
       Alert.alert('Thông báo', 'Cập nhật thông tin thành công!');
       setEditModalVisible(false);
 
@@ -133,47 +184,65 @@ const UserScreen = ({ navigation }) => {
         phone: userData.phone || '',
         address: userData.address || '',
         avatar: userData.avatar || null,
+        favorites: userData.favorites || [], // Update favorites
+        cart: userData.cart || [], // Update cart
+        orders: userData.orders || [], // Update orders
+        //points: userData.points || 0, // Cập nhật lại điểm tích lũy
       });
       setName(userData.name || '');
       setDob(userData.dob || '');
       setPhone(userData.phone || '');
       setAddress(userData.address || '');
       setAvatar(userData.avatar || null);
+      setFavorites(userData.favorites || []); // Update favorites state
+      setCart(userData.cart || []); // Update cart state
+      setOrders(userData.orders || []); // Update orders state
+      //setPoints(userData.points || 0); // Cập nhật lại state points
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể cập nhật thông tin.');
     }
   };
 
-  const handleSignOut = () => {
-    signOut(auth)
-      .then(() => {
-        Alert.alert('Thông báo', 'Đã đăng xuất.');
-        navigation.navigate('Login');
-      })
-      .catch(error => {
-        Alert.alert('Lỗi', 'Không thể đăng xuất.');
+  const handleSignOut = async () => {
+    try {
+      // Đăng xuất khỏi Firebase
+      await signOut(auth);
+  
+      // Xóa token khỏi AsyncStorage
+      await AsyncStorage.removeItem('userToken');
+  
+      Alert.alert('Thông báo', 'Đã đăng xuất.');
+  
+      // Reset ngăn xếp điều hướng về màn hình đăng nhập
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
       });
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể đăng xuất.');
+    }
   };
+  
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.avatarContainer}>
+    <ScrollView contentContainerStyle={tw`p-5`}>
+      <View style={tw`items-center mb-5`}>
         {avatar ? (
-          <Image source={{ uri: avatar }} style={styles.avatar} />
+          <Image source={{ uri: avatar }} style={tw`w-24 h-24 rounded-full border-2 border-blue-500`} />
         ) : (
           <Icon name="account-circle" size={100} color="#ddd" />
         )}
-        <TouchableOpacity style={styles.changeAvatarButton} onPress={handlePickImage}>
+        <TouchableOpacity style={tw`flex-row items-center mt-2`} onPress={handlePickImage}>
           <Icon name="camera-alt" size={24} color="#007bff" />
-          <Text style={styles.changeAvatarText}>Thay đổi ảnh đại diện</Text>
+          <Text style={tw`ml-2 text-blue-500 text-lg`}>Thay đổi ảnh đại diện</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.fieldContainer}>
-        <View style={styles.fieldWrapper}>
+      <View style={tw`mb-4`}>
+        <View style={tw`flex-row items-center`}>
           <Icon name="person" size={20} color="#007bff" />
           <TextInput
-            style={styles.input}
+            style={tw`flex-1 ml-2 text-lg font-bold text-gray-800 py-3`}
             placeholder="Tên người dùng"
             value={name}
             onChangeText={setName}
@@ -181,11 +250,11 @@ const UserScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={styles.fieldContainer}>
-        <View style={styles.fieldWrapper}>
+      <View style={tw`mb-4`}>
+        <View style={tw`flex-row items-center`}>
           <Icon name="email" size={20} color="#007bff" />
           <TextInput
-            style={styles.input}
+            style={tw`flex-1 ml-2 text-lg font-bold text-gray-800 py-3`}
             placeholder="Email"
             value={email}
             onChangeText={setEmail}
@@ -194,11 +263,11 @@ const UserScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={styles.fieldContainer}>
-        <View style={styles.fieldWrapper}>
+      <View style={tw`mb-4`}>
+        <View style={tw`flex-row items-center`}>
           <Icon name="calendar-today" size={20} color="#007bff" />
           <TextInput
-            style={styles.input}
+            style={tw`flex-1 ml-2 text-lg font-bold text-gray-800 py-3`}
             placeholder="Ngày sinh (dd/mm/yyyy)"
             value={dob}
             onChangeText={setDob}
@@ -206,11 +275,11 @@ const UserScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={styles.fieldContainer}>
-        <View style={styles.fieldWrapper}>
+      <View style={tw`mb-4`}>
+        <View style={tw`flex-row items-center`}>
           <Icon name="phone" size={20} color="#007bff" />
           <TextInput
-            style={styles.input}
+            style={tw`flex-1 ml-2 text-lg font-bold text-gray-800 py-3`}
             placeholder="Số điện thoại"
             value={phone}
             onChangeText={setPhone}
@@ -218,11 +287,11 @@ const UserScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={styles.fieldContainer}>
-        <View style={styles.fieldWrapper}>
+      <View style={tw`mb-4`}>
+        <View style={tw`flex-row items-center`}>
           <Icon name="home" size={20} color="#007bff" />
           <TextInput
-            style={styles.input}
+            style={tw`flex-1 ml-2 text-lg font-bold text-gray-800 py-3`}
             placeholder="Địa chỉ"
             value={address}
             onChangeText={setAddress}
@@ -230,134 +299,66 @@ const UserScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleUpdateInfo}>
-        <Icon name="edit" size={20} color="#fff" />
-        <Text style={styles.buttonText}>Cập nhật thông tin</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={[styles.button, styles.logoutButton]} onPress={handleSignOut}>
-        <Icon name="logout" size={20} color="#fff" />
-        <Text style={styles.buttonText}>Đăng xuất</Text>
-      </TouchableOpacity>
-
-      <Modal visible={isEditModalVisible} animationType="slide">
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Xác nhận cập nhật</Text>
+      <View style={tw`mb-4`}>
+        <View style={tw`flex-row items-center`}>
+          <Icon name="star" size={20} color="#007bff" />
           <TextInput
-            style={styles.otpInput}
-            placeholder="Nhập mã OTP"
-            value={otp}
-            onChangeText={setOtp}
-            keyboardType='numeric'
+            style={tw`flex-1 ml-2 text-lg font-bold text-gray-800 py-3`}
+            placeholder="Điểm tích lũy"
+            value={points.toString()} // Hiển thị điểm tích lũy
+            editable={false} // Không cho phép chỉnh sửa
           />
-          <TouchableOpacity style={styles.otpButton} onPress={handleConfirmUpdate}>
-            <Icon name="verified" size={20} color="#fff" />
-            <Text style={styles.buttonText}>Xác nhận OTP</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-            <Text style={styles.cancelButton}>Hủy</Text>
-          </TouchableOpacity>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={tw`bg-blue-500 py-3 rounded-lg items-center flex-row justify-center`}
+        onPress={handleUpdateInfo}
+      >
+        <Icon name="edit" size={20} color="#fff" />
+        <Text style={tw`text-white text-lg font-bold ml-2`}>Cập nhật thông tin</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={tw`mt-5 bg-red-500 py-3 rounded-lg items-center flex-row justify-center`}
+        onPress={handleSignOut}
+      >
+        <Icon name="logout" size={20} color="#fff" />
+        <Text style={tw`text-white text-lg font-bold ml-2`}>Đăng xuất</Text>
+      </TouchableOpacity>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isEditModalVisible}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={tw`flex-1 justify-center items-center bg-black bg-opacity-50`}>
+          <View style={tw`bg-white p-5 rounded-lg w-80`}>
+            <Text style={tw`text-xl font-bold mb-3`}>Xác nhận OTP</Text>
+            <TextInput
+              style={tw`border border-gray-300 rounded-lg p-2 mb-4`}
+              placeholder="Nhập mã OTP"
+              value={otp}
+              onChangeText={setOtp}
+            />
+            <TouchableOpacity
+              style={tw`bg-blue-500 py-2 rounded-lg items-center`}
+              onPress={handleConfirmUpdate}
+            >
+              <Text style={tw`text-white font-bold text-lg`}>Xác nhận</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={tw`mt-2`}
+              onPress={() => setEditModalVisible(false)}
+            >
+              <Text style={tw`text-red-500 text-center text-lg font-bold`}>Hủy</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    padding: 20,
-  },
-  avatarContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderColor: '#007bff',
-    borderWidth: 2,
-  },
-  changeAvatarButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  changeAvatarText: {
-    marginLeft: 10,
-    fontSize: 16,
-    color: '#007bff',
-  },
-  fieldContainer: {
-    marginBottom: 15,
-  },
-  fieldWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  input: {
-    flex: 1,
-    marginLeft: 10,
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    paddingVertical: 12,
-  },
-  button: {
-    backgroundColor: '#33CC33',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  buttonText: {
-    color: '#fff',
-    marginLeft: 5,
-    fontSize: 18,
-  },
-  logoutButton: {
-    backgroundColor: '#FF5252',
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  otpInput: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 15,
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  otpButton: {
-    backgroundColor: '#28a745',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  cancelButton: {
-    color: '#007bff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});
 
 export default UserScreen;

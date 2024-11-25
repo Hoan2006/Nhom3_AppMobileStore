@@ -56,6 +56,7 @@ const ForgetPasswordScreen = ({ navigation }) => {
         keyboardType="email-address"
         autoCapitalize="none"
         placeholderTextColor="#999"
+        editable={!isOtpSent}  
       />
       {!isOtpSent ? (
         <TouchableOpacity style={styles.button} onPress={handleSendOTP} disabled={loading}>
@@ -138,7 +139,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: 'bold',
-    marginLeft: 10, // Thêm khoảng cách giữa icon và chữ
+    marginLeft: 10,
   },
   icon: {
     marginRight: 10,
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
   link: {
     color: '#007BFF',
     fontSize: 16,
-    marginLeft: 10, // Thêm khoảng cách giữa icon và chữ
+    marginLeft: 10,
   },
 });
 
