@@ -4,7 +4,6 @@ import 'login_page.dart';
 import 'order_management_page.dart';
 import 'product_management_page.dart';
 import 'sales_management_page.dart';
-import 'users_management_page.dart';
 import 'add_product_page.dart';
 
 void main() async {
@@ -43,7 +42,6 @@ class MyApp extends StatelessWidget {
         '/orders': (context) => OrderManagementScreen(),
         '/products': (context) => ProductManagementScreen(),
         '/sales': (context) => SalesManagementScreen(),
-        '/users': (context) => UsersManagementScreen(),
         '/add_product': (context) => AddProductPage(),
       },
       onUnknownRoute: (settings) {
