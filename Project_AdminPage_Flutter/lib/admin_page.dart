@@ -41,16 +41,6 @@ class AdminPage extends StatelessWidget {
               },
             ),
 
-            // Section for User Management
-            _buildMenuItem(
-              icon: Icons.people,
-              color: Colors.orange,
-              text: 'Quản lý người dùng',
-              onTap: () {
-                Navigator.pushNamed(context, '/users'); // Đường dẫn tới trang quản lý người dùng
-              },
-            ),
-
             // Section for Order Management
             _buildMenuItem(
               icon: Icons.assignment,
